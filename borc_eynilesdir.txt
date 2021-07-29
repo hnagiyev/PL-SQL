@@ -1,0 +1,196 @@
+create or replace PROCEDURE     borc_eynilesdir (l_sozlesme_no in number) is
+
+    cursor cur_soz is SELECT abonent_kodu,sozlesme_no,musteri_id FROM soz.soz_sozlesme where sozlesme_no=l_sozlesme_no;
+    r_soz cur_soz%rowtype;
+    cursor cur_rpr is select to_number(yil) from (select yil from RPR.RPR_YILLIK_CARI where sozlesme_no=l_sozlesme_no order by yil asc) where rownum=1;
+    r_rpr number(4);
+    l_date number(4);
+    l_gecen_yil number(4);
+
+begin
+    open cur_soz;
+    fetch cur_soz into r_soz;
+    close cur_soz;
+    open cur_rpr;
+    fetch cur_rpr into r_rpr;
+    close cur_rpr;
+    l_gecen_yil:=r_rpr-10;
+    
+    l_date:=to_number(to_char(sysdate,'YYYY'));
+    delete rPR.RPR_YILLIK_CARI where sozlesme_no=l_sozlesme_no;
+    commit;
+    /*insert into rpr.rpr_yillik_cari (abonent_kodu,sozlesme_no,musteri_id,yil,veritabani,su_borcu_toplami,atiksu_borcu_toplami,odeme_su,odeme_atiksu,odeme_artik,odeme_toplami,db_cari_durum_su,db_cari_durum_atiksu)
+                                             select  nvl(a.abonent_kodu,r_soz.abonent_kodu), nvl(a.sozlesme_no,r_soz.sozlesme_no), nvl(a.musteri_id,r_soz.musteri_id), nvl(a.yil,l_gecen_yil), nvl(a.veritabani,'Y'),
+                                                nvl(a.su_borcu_toplami,0), nvl(a.atiksu_borcu_toplami,0), nvl(a.odeme_su,0), nvl(a.odeme_atiksu,0), nvl(a.odeme_artik,0), nvl(a.odeme_toplami,0),
+                                                b.su_borcu_toplami - b.odeme_su + b.db_cari_durum_su - b.odeme_artik , b.atiksu_borcu_toplami - b.odeme_atiksu + b.db_cari_durum_atiksu 
+                                               from 
+                                              (
+                                              select 
+                                                        s.abonent_kodu, 
+                                                        c.sozlesme_no, 
+                                                        s.musteri_id, 
+                                                        c.yil, 
+                                                        'Y' veritabani, 
+                                                        sum(case when ba_durumu=1 and su_atiksu  = 'S' then ba_durumu*tutar end)  su_borcu_toplami,
+                                                        sum(case when ba_durumu=1 and su_atiksu  = 'A' then ba_durumu*tutar end)  atiksu_borcu_toplami,
+                                                        abs(sum(case when ba_durumu=-1 and su_atiksu  = 'S' then ba_durumu*tutar end))  odeme_su,
+                                                        abs(sum(case when ba_durumu=-1 and su_atiksu  = 'A' then ba_durumu*tutar end))  odeme_atiksu,
+                                                        abs(sum(case when ba_durumu=-1 and su_atiksu  = 'O' then ba_durumu*tutar end))  odeme_artik,
+                                                        abs(sum(case when ba_durumu=-1  then ba_durumu*tutar end))  odeme_toplami
+                                              from ths.ths_cari_hareket_su_vw c, soz.soz_sozlesme s
+                                              where c.sozlesme_no = s.sozlesme_no                     
+                                                and c.cari_durum_kodu is null
+                                                and c.sozlesme_no = l_sozlesme_no
+                                                and c.yil         = l_gecen_yil
+                                              group by s.abonent_kodu, c.sozlesme_no, s.musteri_id, c.yil
+                                              ) a, (
+                                                    select  sozlesme_no, yil,
+                                                            nvl(su_borcu_toplami,0)     su_borcu_toplami, 
+                                                            nvl(odeme_su,0)             odeme_su, 
+                                                            nvl(db_cari_durum_su,0)     db_cari_durum_su,
+                                                            nvl(atiksu_borcu_toplami,0) atiksu_borcu_toplami, 
+                                                            nvl(odeme_atiksu,0)         odeme_atiksu, 
+                                                            nvl(db_cari_durum_atiksu,0) db_cari_durum_atiksu,
+                                                            nvl(odeme_artik,0)          odeme_artik
+                                                    from rpr.rpr_yillik_cari
+                                                    where sozlesme_no = l_sozlesme_no
+                                                      and yil           = l_gecen_yil-1
+                                                    ) b
+                                                    where a.sozlesme_no = b.sozlesme_no(+)
+                                                    --and a.yil = b.yil + 1
+                                                    ;
+    commit;*/
+    if l_gecen_yil is null then
+       l_gecen_yil:=1900;
+    end if;
+    loop
+        
+            insert into rpr.rpr_yillik_cari (abonent_kodu,sozlesme_no,musteri_id,yil,veritabani,su_borcu_toplami,atiksu_borcu_toplami,odeme_su,odeme_atiksu,odeme_artik,odeme_toplami,db_cari_durum_su,db_cari_durum_atiksu)
+                                            SELECT * FROM (
+                                                        select  nvl(a.abonent_kodu,r_soz.abonent_kodu), nvl(a.sozlesme_no,r_soz.sozlesme_no), nvl(a.musteri_id,r_soz.musteri_id), nvl(a.yil,l_gecen_yil), nvl(a.veritabani,'Y'),
+                                                                                                        nvl(a.su_borcu_toplami,0), nvl(a.atiksu_borcu_toplami,0), nvl(a.odeme_su,0), nvl(a.odeme_atiksu,0), nvl(a.odeme_artik,0), nvl(a.odeme_toplami,0),
+                                                                                                        b.su_borcu_toplami - b.odeme_su + b.db_cari_durum_su - b.odeme_artik , b.atiksu_borcu_toplami - b.odeme_atiksu + b.db_cari_durum_atiksu 
+                                                                                                       from 
+                                                                                                      (
+                                                                                                      select 
+                                                                                                                s.abonent_kodu, 
+                                                                                                                c.sozlesme_no, 
+                                                                                                                s.musteri_id, 
+                                                                                                                c.yil, 
+                                                                                                                'Y' veritabani, 
+                                                                                                                sum(case when ba_durumu=1 and su_atiksu  = 'S' then ba_durumu*tutar end)  su_borcu_toplami,
+                                                                                                                sum(case when ba_durumu=1 and su_atiksu  = 'A' then ba_durumu*tutar end)  atiksu_borcu_toplami,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'S' then ba_durumu*tutar end))  odeme_su,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'A' then ba_durumu*tutar end))  odeme_atiksu,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'O' then ba_durumu*tutar end))  odeme_artik,
+                                                                                                                abs(sum(case when ba_durumu=-1  then ba_durumu*tutar end))  odeme_toplami
+                                                                                                      from ths.ths_cari_hareket_su_vw c, soz.soz_sozlesme s
+                                                                                                      where c.sozlesme_no = s.sozlesme_no                     
+                                                                                                        and c.cari_durum_kodu is null
+                                                                                                        and c.sozlesme_no = l_sozlesme_no
+                                                                                                        and c.yil         = l_gecen_yil
+                                                                                                      group by s.abonent_kodu, c.sozlesme_no, s.musteri_id, c.yil
+                                                                                                      ) a, (
+                                                                                                            select  sozlesme_no, yil,
+                                                                                                                    nvl(su_borcu_toplami,0)     su_borcu_toplami, 
+                                                                                                                    nvl(odeme_su,0)             odeme_su, 
+                                                                                                                    nvl(db_cari_durum_su,0)     db_cari_durum_su,
+                                                                                                                    nvl(atiksu_borcu_toplami,0) atiksu_borcu_toplami, 
+                                                                                                                    nvl(odeme_atiksu,0)         odeme_atiksu, 
+                                                                                                                    nvl(db_cari_durum_atiksu,0) db_cari_durum_atiksu,
+                                                                                                                    nvl(odeme_artik,0)          odeme_artik
+                                                                                                            from rpr.rpr_yillik_cari
+                                                                                                            where sozlesme_no = l_sozlesme_no
+                                                                                                              and yil           = l_gecen_yil-1
+                                                                                                            ) b
+                                                                                                            where a.sozlesme_no = b.sozlesme_no
+                                                                                                            and a.yil = b.yil + 1
+                                                        union all
+                                                        select  nvl(a.abonent_kodu,r_soz.abonent_kodu), nvl(a.sozlesme_no,r_soz.sozlesme_no), nvl(a.musteri_id,r_soz.musteri_id), nvl(a.yil,l_gecen_yil), nvl(a.veritabani,'Y'),
+                                                                                                        nvl(a.su_borcu_toplami,0), nvl(a.atiksu_borcu_toplami,0), nvl(a.odeme_su,0), nvl(a.odeme_atiksu,0), nvl(a.odeme_artik,0), nvl(a.odeme_toplami,0),
+                                                                                                        b.su_borcu_toplami - b.odeme_su + b.db_cari_durum_su - b.odeme_artik , b.atiksu_borcu_toplami - b.odeme_atiksu + b.db_cari_durum_atiksu 
+                                                                                                       from 
+                                                                                                      (
+                                                        select 
+                                                                                                                s.abonent_kodu, 
+                                                                                                                c.sozlesme_no, 
+                                                                                                                s.musteri_id, 
+                                                                                                                c.yil, 
+                                                                                                                'Y' veritabani, 
+                                                                                                                sum(case when ba_durumu=1 and su_atiksu  = 'S' then ba_durumu*tutar end)  su_borcu_toplami,
+                                                                                                                sum(case when ba_durumu=1 and su_atiksu  = 'A' then ba_durumu*tutar end)  atiksu_borcu_toplami,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'S' then ba_durumu*tutar end))  odeme_su,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'A' then ba_durumu*tutar end))  odeme_atiksu,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'O' then ba_durumu*tutar end))  odeme_artik,
+                                                                                                                abs(sum(case when ba_durumu=-1  then ba_durumu*tutar end))  odeme_toplami
+                                                                                                      from ths.ths_cari_hareket_su_vw c, soz.soz_sozlesme s
+                                                                                                      where c.sozlesme_no = s.sozlesme_no                     
+                                                                                                        and c.cari_durum_kodu is null
+                                                                                                        and c.sozlesme_no = l_sozlesme_no
+                                                                                                        and c.yil         = l_gecen_yil
+                                                                                                      group by s.abonent_kodu, c.sozlesme_no, s.musteri_id, c.yil
+                                                                                                      ) a, (
+                                                                                                            select  sozlesme_no, yil,
+                                                                                                                    nvl(su_borcu_toplami,0)     su_borcu_toplami, 
+                                                                                                                    nvl(odeme_su,0)             odeme_su, 
+                                                                                                                    nvl(db_cari_durum_su,0)     db_cari_durum_su,
+                                                                                                                    nvl(atiksu_borcu_toplami,0) atiksu_borcu_toplami, 
+                                                                                                                    nvl(odeme_atiksu,0)         odeme_atiksu, 
+                                                                                                                    nvl(db_cari_durum_atiksu,0) db_cari_durum_atiksu,
+                                                                                                                    nvl(odeme_artik,0)          odeme_artik
+                                                                                                            from rpr.rpr_yillik_cari
+                                                                                                            where sozlesme_no = l_sozlesme_no
+                                                                                                              and yil           = l_gecen_yil-1
+                                                                                                            ) b
+                                                                                                            where a.sozlesme_no = b.sozlesme_no(+)
+                                                                                                            --and a.yil = b.yil + 1
+                                                        
+                                                        
+                                                        
+                                                        union all
+                                                        select  nvl(a.abonent_kodu,r_soz.abonent_kodu), nvl(a.sozlesme_no,r_soz.sozlesme_no), nvl(a.musteri_id,r_soz.musteri_id), nvl(a.yil,l_gecen_yil), nvl(a.veritabani,'Y'),
+                                                                                                        nvl(a.su_borcu_toplami,0), nvl(a.atiksu_borcu_toplami,0), nvl(a.odeme_su,0), nvl(a.odeme_atiksu,0), nvl(a.odeme_artik,0), nvl(a.odeme_toplami,0),
+                                                                                                        b.su_borcu_toplami - b.odeme_su + b.db_cari_durum_su - b.odeme_artik , b.atiksu_borcu_toplami - b.odeme_atiksu + b.db_cari_durum_atiksu 
+                                                                                                       from 
+                                                                                                      (
+                                                        select 
+                                                                                                                s.abonent_kodu, 
+                                                                                                                c.sozlesme_no, 
+                                                                                                                s.musteri_id, 
+                                                                                                                c.yil, 
+                                                                                                                'Y' veritabani, 
+                                                                                                                sum(case when ba_durumu=1 and su_atiksu  = 'S' then ba_durumu*tutar end)  su_borcu_toplami,
+                                                                                                                sum(case when ba_durumu=1 and su_atiksu  = 'A' then ba_durumu*tutar end)  atiksu_borcu_toplami,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'S' then ba_durumu*tutar end))  odeme_su,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'A' then ba_durumu*tutar end))  odeme_atiksu,
+                                                                                                                abs(sum(case when ba_durumu=-1 and su_atiksu  = 'O' then ba_durumu*tutar end))  odeme_artik,
+                                                                                                                abs(sum(case when ba_durumu=-1  then ba_durumu*tutar end))  odeme_toplami
+                                                                                                      from ths.ths_cari_hareket_su_vw c, soz.soz_sozlesme s
+                                                                                                      where c.sozlesme_no = s.sozlesme_no                     
+                                                                                                        and c.cari_durum_kodu is null
+                                                                                                        and c.sozlesme_no = l_sozlesme_no
+                                                                                                        and c.yil         = l_gecen_yil
+                                                                                                      group by s.abonent_kodu, c.sozlesme_no, s.musteri_id, c.yil
+                                                                                                      ) a, (
+                                                                                                            select  sozlesme_no, yil,
+                                                                                                                    nvl(su_borcu_toplami,0)     su_borcu_toplami, 
+                                                                                                                    nvl(odeme_su,0)             odeme_su, 
+                                                                                                                    nvl(db_cari_durum_su,0)     db_cari_durum_su,
+                                                                                                                    nvl(atiksu_borcu_toplami,0) atiksu_borcu_toplami, 
+                                                                                                                    nvl(odeme_atiksu,0)         odeme_atiksu, 
+                                                                                                                    nvl(db_cari_durum_atiksu,0) db_cari_durum_atiksu,
+                                                                                                                    nvl(odeme_artik,0)          odeme_artik
+                                                                                                            from rpr.rpr_yillik_cari
+                                                                                                            where sozlesme_no = l_sozlesme_no
+                                                                                                              and yil           = l_gecen_yil-1
+                                                                                                            ) b
+                                                                                                            where a.sozlesme_no(+) = b.sozlesme_no
+                                                                                                            --and a.yil = b.yil + 1
+                                                        )
+                                                        where ROWNUM=1
+                                                    ;
+                            commit;
+        l_gecen_yil := l_gecen_yil+1;
+        EXIT WHEN l_gecen_yil>l_date;
+    end loop;
+end;
